@@ -1,0 +1,151 @@
+{% set name = "openmm-torch" %}
+{% set version = "1.4" %}
+
+# see github.com/conda-forge/conda-forge.github.io/issues/1059 for naming discussion
+{% set torch_proc_type = "cuda" if cuda_compiler_version != "None" else "cpu" %}
+
+{% if cuda_compiler_version in (None, "None", True, False) %}
+{% set cuda_major = 0 %}
+{% else %}
+{% set cuda_major = environ.get("cuda_compiler_version", "11.8").split(".")[0] | int %}
+{% endif %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/openmm/{{ name }}/archive/v{{ version }}.tar.gz
+  sha256: c8270d08ae13a0af7050997964447236d6c93eb611b89e1de9c4ca3b3a4aaab5
+  patches:
+    - 0001-Fix-paths.patch
+    - 0002-Cpp17.patch
+build:
+  number: 4
+  string: cuda{{ cuda_compiler_version | replace('.', '') }}py{{ CONDA_PY }}h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}  # [cuda_compiler_version != "None"]
+  string: cpu_py{{ CONDA_PY }}h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}  # [cuda_compiler_version == "None"]
+  skip: true  # [win]
+  skip: true  # [aarch64 and cuda_compiler_version not in (undefined, 'None')]
+  rpaths:
+    - lib/
+    - {{ SP_DIR }}/torch/lib
+
+requirements:
+  build:
+    - python                                 # [build_platform != target_platform]
+    - cross-python_{{ target_platform }}     # [build_platform != target_platform]
+    - numpy >=1.19                           # [build_platform != target_platform]
+    - swig                                   # [build_platform != target_platform]
+    - pytorch                                # [build_platform != target_platform]
+    - pytorch =*={{ torch_proc_type }}*      # [build_platform != target_platform]
+    - openmm >=8.0.0                         # [build_platform != target_platform]
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - {{ compiler('cuda') }}  # [cuda_compiler_version not in (undefined, 'None')]
+    - {{ cdt('mesa-libgl-devel') }}  # [linux]
+    {% if cuda_major >= 12 %}
+    - cuda-driver-dev
+    - cuda-nvrtc-dev
+    - libcufft-dev
+    {% endif %}
+    - cuda-version =={{ cuda_compiler_version }}  # [cuda_compiler_version not in (undefined, 'None')]
+    - cmake
+    - make
+    # START WHEEL CHANGES
+    - unzip           # [unix]
+    - patchelf        # [linux]
+    - auditwheel      # [linux]
+    - setuptools      # [linux]
+    - delocate >=0.10.6
+    - pip
+    # END WHEEL CHANGES
+  host:
+    - python
+    - pip
+    - swig
+    - openmm >=8.0.0
+    - ocl-icd  # [linux]
+    - khronos-opencl-icd-loader  # [osx]
+    # Leaving two dependencies helps rerender correctly
+    # The first gets filled in by the global pinnings
+    # The second gets the processor type
+    - pytorch
+    - pytorch =*={{ torch_proc_type }}*
+    - cuda-version =={{ cuda_compiler_version }}  # [cuda_compiler_version not in (undefined, 'None')]
+    {% if cuda_major >= 12 %}
+    - cuda-driver-dev
+    - cuda-cudart-dev
+    - cuda-nvrtc-dev
+    - cuda-nvtx-dev
+    - cuda-nvml-dev
+    - libcublas-dev
+    - libcufft-dev 
+    - libcurand-dev
+    {% endif %}
+  run:
+    - python
+    - {{ pin_compatible('openmm', max_pin='x.x') }}
+    - ocl-icd  # [linux]
+    - ocl-icd-system  # [linux]
+    - khronos-opencl-icd-loader  # [osx]
+    - ocl_icd_wrapper_apple      # [osx]
+  run_constrained:
+    # 2022/02/05 hmaarrfk
+    # While conda packaging seems to allow us to specify
+    # constraints on the same package in different lines
+    # the resulting package doesn't have the ability to
+    # be specified in multiples lines
+    # This makes it tricky to use run_exports
+    # we add the GPU constraint in the run_constrained
+    # to allow us to have "two" constraints on the
+    # running package
+    - pytorch =*={{ torch_proc_type }}*
+
+test:
+  imports:
+    - openmmtorch
+  commands: |
+    cd ${CONDA_PREFIX}/share/{{ name }}/tests
+    ls -al
+    set +e
+    summary=""
+    exitcode=0
+    for f in Test*; do
+      if [[ $f == *Cuda* || $f == *OpenCL* ]]; then
+        continue
+      fi
+      echo "Running $f..."
+      ./${f}
+      thisexitcode=$?
+      summary+="\n${f}: "
+      if [[ $thisexitcode == 0 ]]; then summary+="OK"; else summary+="FAILED"; fi
+      ((exitcode+=$thisexitcode))
+    done
+    echo "-------"
+    echo "Summary"
+    echo "-------"
+    echo -e "${summary}"
+    exit $exitcode
+
+about:
+  home: https://github.com/openmm/openmm-torch
+  license: MIT
+  license_family: MIT
+  license_file: README.md
+  summary: OpenMM plugin to define forces with neural networks
+  description: |
+    This is a plugin for OpenMM that allows neural networks to be
+    used for defining forces. It is implemented with PyTorch.
+    To use it, you create a PyTorch model that takes particle
+    positions as input and produces energy as output. This plugin
+    uses the model to apply forces to particles during a simulation.
+  doc_url: https://github.com/openmm/openmm-torch
+  dev_url: https://github.com/openmm/openmm-torch
+
+extra:
+  recipe-maintainers:
+    - raimis
+    - jaimergp
+    - peastman
+    - mikemhenry
+    - RaulPPelaez
