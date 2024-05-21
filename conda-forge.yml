@@ -12,7 +12,7 @@ github:
 os_version:
   linux_64: cos7
 provider:
-  linux_ppc64le: github_actions
+  #linux_ppc64le: github_actions
   linux_aarch64: github_actions
   linux_64: github_actions
   osx_64: github_actions
