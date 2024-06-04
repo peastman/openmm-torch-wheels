@@ -20,6 +20,7 @@ source:
   patches:
     - 0001-Fix-paths.patch
     - 0002-Cpp17.patch
+    - 0003-Require-torch.patch
 build:
   number: 4
   string: cuda{{ cuda_compiler_version | replace('.', '') }}py{{ CONDA_PY }}h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}  # [cuda_compiler_version != "None"]
@@ -54,7 +55,7 @@ requirements:
     # START WHEEL CHANGES
     - unzip           # [unix]
     - patchelf        # [linux]
-    - auditwheel      # [linux]
+    - auditwheel <6   # [linux]
     - setuptools      # [linux]
     - delocate >=0.10.6
     - pip
