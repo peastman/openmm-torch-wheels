@@ -1,5 +1,6 @@
 {% set name = "openmm-torch" %}
 {% set version = "1.4" %}
+{% set with_test_suite = "false" %}
 
 # see github.com/conda-forge/conda-forge.github.io/issues/1059 for naming discussion
 {% set torch_proc_type = "cuda" if cuda_compiler_version != "None" else "cpu" %}
@@ -15,12 +16,14 @@ package:
   version: {{ version }}
 
 source:
-  url: https://github.com/openmm/{{ name }}/archive/v{{ version }}.tar.gz
-  sha256: c8270d08ae13a0af7050997964447236d6c93eb611b89e1de9c4ca3b3a4aaab5
+  git_url: https://github.com/peastman/{{ name }}.git
+  git_rev: "2de709e"
+  #url: https://github.com/openmm/{{ name }}/archive/v{{ version }}.tar.gz
+  #sha256: c8270d08ae13a0af7050997964447236d6c93eb611b89e1de9c4ca3b3a4aaab5
   patches:
-    - 0001-Fix-paths.patch
-    - 0002-Cpp17.patch
-    - 0003-Require-torch.patch
+    #- 0001-Fix-paths.patch
+    #- 0002-Cpp17.patch
+    #- 0003-Require-torch.patch
 build:
   number: 4
   string: cuda{{ cuda_compiler_version | replace('.', '') }}py{{ CONDA_PY }}h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}  # [cuda_compiler_version != "None"]
@@ -30,6 +33,9 @@ build:
   rpaths:
     - lib/
     - {{ SP_DIR }}/torch/lib
+  script:
+    - env with_test_suite={{ with_test_suite }} bash {{ RECIPE_DIR }}/build_openmm.sh   # [unix]
+    - set with_test_suite={{ with_test_suite }} &&   {{ RECIPE_DIR }}\build_openmm.bat  # [win]
 
 requirements:
   build:
@@ -39,6 +45,7 @@ requirements:
     - swig                                   # [build_platform != target_platform]
     - pytorch                                # [build_platform != target_platform]
     - pytorch =*={{ torch_proc_type }}*      # [build_platform != target_platform]
+    - pybind11                               # [build_platform != target_platform]
     - openmm >=8.0.0                         # [build_platform != target_platform]
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
@@ -72,6 +79,7 @@ requirements:
     # The second gets the processor type
     - pytorch
     - pytorch =*={{ torch_proc_type }}*
+    - pybind11
     - cuda-version =={{ cuda_compiler_version }}  # [cuda_compiler_version not in (undefined, 'None')]
     {% if cuda_major >= 12 %}
     - cuda-driver-dev

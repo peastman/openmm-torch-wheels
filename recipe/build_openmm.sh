@@ -8,7 +8,7 @@ else
   use_conda_compilers=1
 fi
 
-CMAKE_FLAGS="${CMAKE_ARGS} -DCMAKE_INSTALL_PREFIX=${PREFIX} -DCMAKE_BUILD_TYPE=Release"
+CMAKE_FLAGS="${CMAKE_ARGS} -DCMAKE_INSTALL_PREFIX=${PREFIX} -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF"
 
 if [[ "$use_conda_compilers" == "0" ]]; then
     /usr/bin/sudo -n yum install -y centos-release-scl
@@ -72,6 +72,7 @@ cd build
 cmake ${CMAKE_FLAGS} ${SRC_DIR}
 make -j$CPU_COUNT
 make install
+make PythonInstall
 
 cd python
 rm -rf dist

@@ -1,9 +1,0 @@
-index 4d03efe..436a9f3 100644
---- a/python/setup.py
-+++ b/python/setup.py
-@@ -30,4 +30,5 @@ setup(name='openmmtorch',
-       version='1.0',
-       py_modules=['openmmtorch'],
-       ext_modules=[extension],
-+      install_requires=['torch']
-      )
