@@ -17,7 +17,7 @@ package:
 
 source:
   git_url: https://github.com/peastman/{{ name }}.git
-  git_rev: "2de709e"
+  git_rev: "f9747d9"
   #url: https://github.com/openmm/{{ name }}/archive/v{{ version }}.tar.gz
   #sha256: c8270d08ae13a0af7050997964447236d6c93eb611b89e1de9c4ca3b3a4aaab5
   patches:
@@ -43,9 +43,9 @@ requirements:
     - cross-python_{{ target_platform }}     # [build_platform != target_platform]
     - numpy >=1.19                           # [build_platform != target_platform]
     - swig                                   # [build_platform != target_platform]
-    - pytorch                                # [build_platform != target_platform]
-    - pytorch =*={{ torch_proc_type }}*      # [build_platform != target_platform]
-    - pybind11                               # [build_platform != target_platform]
+#    - pytorch                                # [build_platform != target_platform]
+#    - pytorch =*={{ torch_proc_type }}*      # [build_platform != target_platform]
+#    - pybind11                               # [build_platform != target_platform]
     - openmm >=8.0.0                         # [build_platform != target_platform]
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
@@ -62,7 +62,7 @@ requirements:
     # START WHEEL CHANGES
     - unzip           # [unix]
     - patchelf        # [linux]
-    - auditwheel <6   # [linux]
+    - auditwheel      # [linux]
     - setuptools      # [linux]
     - delocate >=0.10.6
     - pip
@@ -77,9 +77,9 @@ requirements:
     # Leaving two dependencies helps rerender correctly
     # The first gets filled in by the global pinnings
     # The second gets the processor type
-    - pytorch
-    - pytorch =*={{ torch_proc_type }}*
-    - pybind11
+#    - pytorch
+#    - pytorch =*={{ torch_proc_type }}*
+#    - pybind11
     - cuda-version =={{ cuda_compiler_version }}  # [cuda_compiler_version not in (undefined, 'None')]
     {% if cuda_major >= 12 %}
     - cuda-driver-dev
@@ -108,7 +108,7 @@ requirements:
     # we add the GPU constraint in the run_constrained
     # to allow us to have "two" constraints on the
     # running package
-    - pytorch =*={{ torch_proc_type }}*
+#    - pytorch =*={{ torch_proc_type }}*
 
 test:
   imports:

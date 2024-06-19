@@ -2,6 +2,19 @@
 
 set -ex
 
+unset PIP_NO_BUILD_ISOLATION
+unset PIP_NO_DEPENDENCIES
+unset PIP_IGNORE_INSTALLED
+unset PIP_NO_INDEX
+if [[ "$cuda_compiler_version" == "None" ]]; then
+    $PYTHON -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+elif [[ "$cuda_compiler_version" == "11.8" ]]; then
+    $PYTHON -m pip install torch --index-url https://download.pytorch.org/whl/cu118
+else
+    $PYTHON -m pip install torch --index-url https://download.pytorch.org/whl/cu121
+fi
+export Torch_DIR=`${PYTHON} -c 'import torch;print(torch.utils.cmake_prefix_path)'`
+
 if [[ "$target_platform" == "linux-"* ]]; then
   use_conda_compilers=0
 else
@@ -9,6 +22,7 @@ else
 fi
 
 CMAKE_FLAGS="${CMAKE_ARGS} -DCMAKE_INSTALL_PREFIX=${PREFIX} -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF"
+CMAKE_FLAGS+=" -DOPENMM_DIR=`${PYTHON} -c 'import openmm;import os;print(os.path.dirname(openmm.version.openmm_library_path))'`"
 
 if [[ "$use_conda_compilers" == "0" ]]; then
     /usr/bin/sudo -n yum install -y centos-release-scl
@@ -29,11 +43,14 @@ if [[ "$target_platform" == linux* ]]; then
     CXXFLAGS+=" $MINIMAL_CFLAGS"
 
     # CUDA is enabled in these platforms
-    if [[ "$target_platform" == linux-64 || "$target_platform" == linux-ppc64le ]]; then
+#    if [[ "$target_platform" == linux-64 || "$target_platform" == linux-ppc64le ]]; then
+    if [[ "$cuda_compiler_version" != "None" ]]; then
         # # CUDA_HOME is defined by nvcc metapackage
         CMAKE_FLAGS+=" -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_HOME}"
         # shadow some CMAKE_ARGS bits that interfere with CUDA detection
         CMAKE_FLAGS+=" -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH"
+    else
+        CMAKE_FLAGS+=" -DNN_BUILD_CUDA_LIB=OFF"
     fi
 
     # OpenCL ICD
@@ -86,7 +103,7 @@ for whl in $PWD/dist/*.whl; do
   pushd $PREFIX
     plugins=""
     for plugin in lib/plugins/*${SHLIB_EXT}; do
-      if [[ "$plugin" != *CUDA.so ]]; then
+      if [[ "$plugin" == *OpenMMTorch*.so ]] && [[ "$plugin" != *CUDA.so ]]; then
         plugins="$plugins $plugin"
       fi
     done
@@ -108,9 +125,12 @@ function repair() {
   if [[ "$target_platform" == "linux-"* ]]; then
     rm -rf $PREFIX/lib/libstdc++.*
     rm -rf $PREFIX/lib/libgcc*
-    auditwheel repair dist/*.whl \
+    auditwheel repair dist/openmmtorch*.whl \
       -w $PWD/fixed_wheels \
       --plat manylinux2014_${ARCH} \
+      --exclude libOpenMM.so.8.1 \
+      --exclude libOpenMMCUDA.so \
+      --exclude libOpenMMOpenCL.so \
       --exclude libOpenMMTorch.so \
       --exclude libOpenMMTorchCUDA.so \
       --exclude libOpenMMTorchCUDAOpenCL.so \
@@ -121,6 +141,9 @@ function repair() {
       --exclude libcufft.so.10 \
       --exclude libnvrtc.so.11.2 \
       --exclude libnvrtc.so.12 \
+      --exclude libtorch.so \
+      --exclude libtorch_cpu.so \
+      --exclude libc10.so \
       --lib-sdir=$LIB_SDIR
   else
     $BUILD_PREFIX/bin/python $(which delocate-wheel) \
